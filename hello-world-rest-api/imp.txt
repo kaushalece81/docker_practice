@@ -1,0 +1,215 @@
+Build a docker image for the application  manually
+---------------------------------------------------
+
+1. Build a jar
+ Run project as maven build
+ clean install
+hello-world-rest-api.jar
+2. set up prerequistes like open jdk:8-jdk-alpine FROM openjdk:11
+docker run -dit openjdk:11
+d detached mode -it interactive mode
+docker container exec  silly_robinson ls /tmp
+3. copy the jar
+C:\Users\kaushlender sharma>docker container ls
+CONTAINER ID   IMAGE                                    COMMAND                  CREATED          STATUS          PORTS                    NAMES
+264cb01e0ae1   openjdk:11                               "jshell"                 22 minutes ago   Up 22 minutes                            silly_robinson
+cd D:\practiceGit\docker_practice\hello-world-rest-api
+docker container cp target/hello-world-rest-api.jar silly_robinson:/tmp
+check what is present in container
+docker container exec  silly_robinson ls /tmp
+
+D:\practiceGit\docker_practice\hello-world-rest-api>docker container exec  silly_robinson ls /tmp
+hello-world-rest-api.jar
+hsperfdata_root
+
+save the container as an image with newname
+docker container commit silly_robinson example/hello-world-rest-api:manual-deployment1
+D:\practiceGit\docker_practice\hello-world-rest-api>docker images
+REPOSITORY                     TAG                  IMAGE ID       CREATED          SIZE
+example/hello-world-rest-api   manual-deployment1   3ab8b267db35   11 seconds ago   677MB
+
+in cmd prompt
+docker container commit --change="CMD [\"java\",\"-jar\",\"/tmp/hello-world-rest-api.jar\"]" silly_robinson example/hello-world-rest-api:manual-deployment2
+in windows powershell
+docker container commit --change='CMD ["java","-jar","/tmp/hello-world-rest-api.jar"]' silly_robinson example/hello-world-rest-api:manual-deployment3
+
+D:\practiceGit\docker_practice\hello-world-rest-api>docker images
+REPOSITORY                     TAG                  IMAGE ID       CREATED              SIZE
+example/hello-world-rest-api   manual-deployment3   10189cfa23b2   About a minute ago   677MB
+example/hello-world-rest-api   manual-deployment2   0052c5c014e9   2 minutes ago        677MB
+example/hello-world-rest-api   manual-deployment1   3ab8b267db35   24 minutes ago       677MB
+
+4. Run the jar
+docker run -p 5020:5020 example/hello-world-rest-api:manual-deployment2
+
+ localhost:5020/hello-world
+ localhost:5020/hello-world-bean
+ in windows 10 and using docker toolbox
+ use 192.168.99.100 as docker is configured to use defualt machine with ip 192.168.99.100 
+ else use commmand docker-machine-ip
+ 
+Build a docker image for the application  using Dockerfile
+---------------------------------------------------
+Level 1
+create file Dockerfile add contents below
+FROM openjdk:11
+EXPOSE 5020
+ADD target/hello-world-rest-api.jar hello-world-rest-api.jar
+ENTRYPOINT ["sh", "-c", "java -jar /hello-world-rest-api.jar"]
+
+EXPOSE 5020 means inform to external world the container will run on internal port 5020
+run maven clean install
+
+cd D:\practiceGit\docker_practice\hello-world-rest-api
+docker build -t example/hello-world-rest-api:dockerfile1 .
+D:\practiceGit\docker_practice\hello-world-rest-api>docker build -t example/hello-world-rest-api:dockerfile1 .
+[+] Building 0.8s (7/7) FINISHED
+ => [internal] load build definition from Dockerfile                                                               0.1s
+ => => transferring dockerfile: 193B                                                                               0.0s
+ => [internal] load .dockerignore                                                                                  0.1s
+ => => transferring context: 2B                                                                                    0.0s
+ => [internal] load metadata for docker.io/library/openjdk:11                                                      0.0s
+ => [internal] load build context                                                                                  0.3s
+ => => transferring context: 17.56MB                                                                               0.2s
+ => [1/2] FROM docker.io/library/openjdk:11                                                                        0.3s
+ => [2/2] ADD target/hello-world-rest-api.jar hello-world-rest-api.jar                                             0.1s
+ => exporting to image                                                                                             0.2s
+ => => exporting layers                                                                                            0.1s
+ => => writing image sha256:b5eef8e06188412c56addf64ca9c7f3d8e107b4461e3da50e7b2ac729724566a                       0.0s
+ => => naming to docker.io/example/hello-world-rest-api:dockerfile1                                                0.0s
+
+Use 'docker scan' to run Snyk tests against images to find vulnerabilities and learn how to fix them
+--stop ---openjdk:11
+docker stop 264cb01e0ae1 
+
+check history of image
+-------------------------
+docker history example/hello-world-rest-api:dockerfile1   
+
+
+Dockerfile Maven plugin  build docker image  it integrates maven with docker  this creates the image
+------------------------------
+https://github.com/spotify/dockerfile-maven
+add in between <build><plugins> </plugins></build> pom.xml
+<plugin>
+    <groupId>com.spotify</groupId>
+    <artifactId>dockerfile-maven-plugin</artifactId>
+    <version>1.4.10</version>
+    <executions>
+        <execution>
+            <id>default</id>
+            <goals>
+                <goal>build</goal>
+            </goals>
+        </execution>
+    </executions>
+    <configuration>
+        <repository>example/${project.name}</repository>
+        <tag>${project.version}</tag>
+        <skipDockerInfo>true</skipDockerInfo>
+    </configuration>
+</plugin>
+
+
+
+
+expose daemon without TLS option in windows
+==============================================
+docker desktop settings-->General tab --> check checkbox  Expose daemon on tcp://localhost:2375 without TLS
+To avoid error java.net.ConnectException : Connection refused
+If we do not do this setting and maven clean install
+Error: Caused by: java.net.ConnectException: Connection refused: no further information
+
+
+Then
+run project as maven clean install
+
+
+D:\practiceGit\docker_practice\hello-world-rest-api>docker images
+REPOSITORY                     TAG                  IMAGE ID       CREATED              SIZE
+example/hello-world-rest-api   0.0.1-SNAPSHOT       15720764d032   About a minute ago   677MB
+\
+
+run container with image example/hello-world-rest-api:0.0.1-SNAPSHOT
+-----------------------------------------------------------------------
+docker run -p 5020:5020 example/hello-world-rest-api:0.0.1-SNAPSHOT
+
+
+
+Build a docker image for the application  using Dockerfile common for all projects
+---------------------------------------------------
+Level 1
+create file Dockerfile add contents below
+FROM openjdk:11
+EXPOSE 5020
+ADD target/*.jar app.jar
+ENTRYPOINT ["sh", "-c", "java -jar /app.jar"]
+
+docker run -p 5020:5020 example/hello-world-rest-api:0.0.1-SNAPSHOT
+
+current situation
+==============================
+1. copying the FAT jar [which contains maven dependencies jars + class files + property file] 
+maven dependencies which does not change very often only class files changes frequently
+hence split fate jar into components
+2. JDK image [at present this layer is cached]
+
+
+Desired situation
+==============================
+1. classes
+2. Dependencies[this layer is cached]
+3. JDK image[this layer is cached]
+Plugin available there Maven Dependency Plugin
+
+Maven Dependency Plugin
+-------------------------
+<plugin>	
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-dependency-plugin</artifactId>
+    <executions>
+        <execution>
+            <id>unpack</id>
+            <phase>package</phase>
+            <goals>
+                <goal>unpack</goal>
+            </goals>
+            <configuration>
+                <artifactItems>
+                    <artifactItem>
+                        <groupId>${project.groupId}</groupId>
+                        <artifactId>${project.artifactId}</artifactId>
+                        <version>${project.version}</version>
+                    </artifactItem>
+                </artifactItems>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+
+
+mvn clean install
+Now D:\practiceGit\docker_practice\hello-world-rest-api\target\dependency  foler is create in target
+D:\practiceGit\docker_practice\hello-world-rest-api\target\dependency\BOOT-INF\lib contains all required jar dependencies
+D:\practiceGit\docker_practice\hello-world-rest-api\target\dependency\BOOT-INF\classes contains all classes
+D:\practiceGit\docker_practice\hello-world-rest-api\target\dependency\META-INF contains metadata
+
+Level2 Dockerfile which does that
+--------------------------------------
+FROM openjdk:11
+ARG DEPENDENCY=target/dependency
+COPY ${DEPENDENCY}/BOOT-INF/lib /app/lib
+COPY ${DEPENDENCY}/META-INF /app/META-INF
+COPY ${DEPENDENCY}/BOOT-INF/classes /app
+ENTRYPOINT ["java","-cp","app:app/lib/*","com.example.rest.webservices.restfulwebservices.RestfulWebServicesApplication
+
+build image using maven
+--------------------------
+mvn clean install
+
+run docker images created
+----------------------------
+docker run -p 5020:5020 example/hello-world-rest-api:0.0.1-SNAPSHOT
+
+
+

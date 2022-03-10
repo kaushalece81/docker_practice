@@ -1,0 +1,154 @@
+no Dockerfile is required and Then no need of Maven Dependency Plugin for unpack <artifactId>maven-dependency-plugin</artifactId> and 
+also  Dockerfile Maven plugin <artifactId>dockerfile-maven-plugin</artifactId> not needed  which build docker image  it integrates maven with docker
+
+
+build image without docker file using JIB
+==========================================
+What is jib plugin?
+Jib is an open-source Java tool maintained by Google for building Docker images of Java applications.
+Jib is maven plugin for building docker and OCI[Open container Initiative]  images for java application
+
+https://github.com/GoogleContainerTools/jib/tree/master/jib-maven-plugin
+
+<!-- Jib is maven plugin for building docker and OCI[Open container Initiative]  images for java application -->
+			<plugin>
+				<groupId>com.google.cloud.tools</groupId>
+				<artifactId>jib-maven-plugin</artifactId>
+				<version>3.2.0</version>
+				<configuration>
+					<from>
+						<image>openjdk:11</image>
+					</from>
+					<to>
+						<image>example/${project.name}</image>
+						<tags>
+							<tag>${project.version}</tag>
+							<tag>latest</tag>
+						</tags>
+					</to>
+					<container>
+						<creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+						<jvmFlags>
+							<jvmFlag>-Xms512m</jvmFlag>
+						</jvmFlags>
+						<mainClass>com.example.rest.webservices.restfulwebservices.RestfulWebServicesApplication</mainClass>
+						<ports>
+							<port>5020</port>
+						</ports>
+					</container>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>dockerBuild</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+"useCurrentTimestamp - true" discussion
+https://github.com/GooleContainerTools/jib/blob/master/docs/faq.md#why-is-my-image-created-48-years-ago 
+
+
+build image using maven
+--------------------------
+mvn clean install
+
+C:\Users\kaushlender sharma>docker images
+REPOSITORY                       TAG                  IMAGE ID       CREATED              SIZE
+hello-world-rest-api-using-jib   0.0.1-SNAPSHOT       ae8facf03201   20 seconds ago       262MB
+
+
+run docker images created
+----------------------------
+docker run -p 5020:5020 example/hello-world-rest-api-using-jib:0.0.1-SNAPSHOT
+
+
+
+
+Fabric8io/first docker maven plugin this is old way new way using JIB
+-----------------------------------
+Fabric8io own configuration syntax can be used to create a Dockerfile. 
+https://dmp.fabric8.io/
+
+Before applying this plugin make sure 
+no Dockerfile is there and Then no  Maven Dependency Plugin for unpack <artifactId>maven-dependency-plugin</artifactId> and 
+also  Dockerfile Maven plugin <artifactId>dockerfile-maven-plugin</artifactId> not needed  which build docker image  it integrates maven with docker
+
+supports two ways
+1.Using Dockerfile
+2.Defining docker file contents in pom.xml
+
+Using Dockerfile
+=====================
+<plugin>
+    <groupId>io.fabric8</groupId>
+    <artifactId>docker-maven-plugin</artifactId>
+    <version>0.26.0</version>
+    <executions>
+        <execution>
+            <id>docker-build</id>
+            <phase>package</phase>
+            <goals>
+                <goal>build</goal>
+            </goals>
+        </execution>
+    </executions>
+</plugin>
+
+
+add jar path in properties tag
+------------------------------
+
+<properties>
+...
+ <jar>${project.build.directory}/${project.build.finalName}.jar</jar>
+</properties>
+
+
+2. .Defining docker file contents in pom.xml
+================================================
+
+<plugin>
+   <groupId>io.fabric8</groupId>
+   <artifactId>docker-maven-plugin</artifactId>
+   <version>0.26.0</version>
+   <extensions>true</extensions>
+   <configuration>
+      <verbose>true</verbose>
+      <images>
+         <image>
+            <name>${project.artifactId}</name>
+            <build>
+               <from>openjdk:11</from>
+               <entryPoint>
+                  <exec>
+                     <args>java</args>
+                     <args>-jar</args>
+                     <args>/maven/${project.build.finalName}.jar</args>
+                  </exec>
+               </entryPoint>
+               <assembly>
+                  <descriptorRef>artifact</descriptorRef>
+               </assembly>
+            </build>
+         </image>
+      </images>
+   </configuration>
+   <executions>
+    <execution>
+        <id>docker-build</id>
+        <phase>package</phase>
+        <goals>
+            <goal>build</goal>
+        </goals>
+    </execution>
+   </executions>
+</plugin>
+
+
+
+
+But most of the projects uses external docker file
+====================================================
